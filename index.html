@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Laravel</title>
+
+        <!-- Fonts -->
+        <!-- <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet"> -->
+        <!-- <script src="https://apis.google.com/js/client.js?onload=onClientLoad"></script> -->
+        <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+        <script async src="https://www.youtube.com/iframe_api"></script>
+        <script type="text/javascript" src="socket.io.js"></script>
+
+    </head>
+    <style>
+        .set-container {
+            float: left; 
+            margin-top: 20px; 
+            margin-left: 10px;
+            max-height: 300px;
+        }
+        select {
+            height: 300px;
+            width: 200px;
+        }
+        button {
+            width: 150px;
+        }
+        .search-button {
+            margin-bottom: 5px;
+        }
+    </style>
+
+    <script>
+    //2016 mizTech NTU ESOE mikeZheng 
+        // var musicCards = [];
+        var player;
+        var playList = [];
+        var nowPlay = {};
+        
+        var socket = io("ccreator.cc:6780");
+
+        $(document).ready(function() {
+            socketSetting();
+            //替按鈕綁上事件
+            $("#nextButton").on("click", function() {
+                NextSong();
+            });
+            $("#deleteButton").on("click", function() {
+                DeleteSong();
+            });
+            $('#playButton').on("click", function () {
+                PlaySong();
+            });
+            $('#changeButton').on("click", function() {
+                ChangeSong();
+            });
+        });
+
+        //初始化影片(onYouTubeIframeAPIReady會自動執行，在此不用)
+        function YTINIT(_ids = -1) {
+            if (_ids == -1) {
+                return;
+            }
+            player = new YT.Player('muteYouTubeVideoPlayer', {
+                videoId: _ids, // YouTube 影片ID
+                width: 560,               // 播放器寬度 (px)
+                height: 300,              // 播放器高度 (px)
+                playerVars: {
+                autoplay: 1,        // 在讀取時自動播放影片
+                controls: 1,        // 在播放器顯示暫停／播放按鈕
+                showinfo: 0,        // 隱藏影片標題
+                modestbranding: 1,  // 隱藏YouTube Logo
+                loop: 1,            // 讓影片循環播放
+                fs: 0,              // 隱藏全螢幕按鈕
+                cc_load_policty: 0, // 隱藏字幕
+                iv_load_policy: 3,  // 隱藏影片註解
+                autohide: 0         // 當播放影片時隱藏影片控制列
+                },
+                events: {
+                    onReady: function(e) {
+                        // e.target.mute();
+                        e.target.playVideo();
+                        console.log(e.target);
+                    },
+                    onStateChange: function(e) {
+                        if (e.data == YT.PlayerState.PAUSED) {
+                            //暫停時觸發的事件
+                        } else if (e.data == YT.PlayerState.ENDED) {
+                            socket.emit("endSong", e.target.getVideoData().video_id);
+                            NextSong();
+                        }
+                    },
+                    onError: function (e) {
+                        //找不到請求影片、影片已被移除、所有者不允許嵌入等狀態，需移除此ytCode
+                        if (e.data == 100 || e.data == 101 || e.data == 150) {
+                            socket.emit("deleteSong", e.target.getVideoData().video_id);
+                            console.log(e.target.getVideoData().video_id+"找不到");
+                            NextSong();
+                        }
+                    }
+                }
+            });
+        }
+
+        //播放下一首歌
+        function NextSong () {
+            if (playList.length > 0) {
+                nowPlay = playList.shift();
+                $("#moviename").text(nowPlay.name);
+                if (player) {
+                    player.loadVideoById(nowPlay.ytcode, 0, '');
+                    console.log(nowPlay.ytcode);
+                } else {
+                    YTINIT(nowPlay.ytcode);
+                }
+                appearAllSong();
+            } else {
+                console.log("歌單為空");
+                socket.emit("needSongList");
+            }
+        }
+        //刪除選擇的歌
+        function DeleteSong () {
+            var pid = document.getElementById("songs").value;
+            if (pid == nowPlay.ytcode) {
+                socket.emit("deleteSong", pid);
+                NextSong();
+            } else {
+                for (let i = 0; i < playList.length; i++) {
+                    if (playList[i].ytcode == pid) {
+                        playList.splice(i, 1);
+                        socket.emit("deleteSong", pid);
+                        break;
+                    }
+                }
+                this.appearAllSong();
+            }
+        }
+        //播放歌曲
+        function PlaySong () {
+            let pid = document.getElementById("songs").value;
+            for (let i = 0; i < playList.length; i++) {
+                if (playList[i].ytcode == pid) {
+                    playList.splice(0, i);
+                    NextSong();
+                    break;
+                }
+            }
+        }
+        //修改歌名
+        function ChangeSong () {
+            let name = document.getElementById("songname").value;
+            let pid = document.getElementById("songs").value;
+            let chk = false;
+            if (pid == nowPlay.ytcode) {
+                nowPlay.name = name;
+                chk = true;
+            } else {
+                for (let i = 0; i < playList.length; i++) {
+                    if (playList[i].ytcode == pid) {
+                        playList[i].name = name;
+                        chk = true;
+                        break;
+                    }
+                }
+            }
+            if (chk) {  //有改名
+                socket.emit("changeSongName", {name: name, ytcode: pid});
+                this.appearAllSong();
+            }
+        }
+        //調整音量
+        function setMusicVolume (_change) {
+            let volume = player.getVolume() + _change;
+            if (volume >= 100) {
+                player.setVolume(100);
+            } else if (volume <= 0) {
+                player.setVolume(0);
+            } else {
+                player.setVolume(volume);
+            }
+        }
+
+        //socket設定
+        function socketSetting () {
+            //取得伺服器
+            socket.on("connect", function () {
+                console.log("get Server");
+            });
+
+            //測試連線用
+            socket.on("greet", () => {
+                console.log("greet");
+                //一開始先拿一次清單
+                socket.emit("needSongList");
+            })
+
+            //接收到Server指令
+            socket.on("getServerAction", function (msg) {
+                var s = JSON.parse(msg);
+                console.log(s);
+                if (s.Action) {
+                    switch (s.Action) {
+                        case 1: //取得歌曲清單，並往下一首播放
+                            if (s.MusicList) {
+                                playList = playList.concat(s.MusicList);
+                                if (playList.length > 0) {
+                                    NextSong();
+                                }
+                            }
+                            break;
+                        case 2: //取得新歌
+                            if (s.MusicList) {
+                                playList = playList.concat(s.MusicList);
+                                appearAllSong();
+                            }
+                            break;
+                        case 3: //切斷當前的歌，並播放收到的歌
+                            if (s.MusicList) {
+                                playList.unshift(s.MusicList[0]);
+                                if (playList.length > 0) {
+                                    NextSong();
+                                }
+                            }
+                            break;
+                        case 4: //新增至下一首歌
+                            if (s.MusicList) {
+                                playList.unshift(s.MusicList[0]);
+                                appearAllSong();
+                            }
+                            break;
+                        case 5: //切歌
+                            NextSong();
+                            break;
+                        case 6: //調整音量
+                            if (s.chVolume) {
+                                setMusicVolume(s.chVolume);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            });
+
+            //斷線
+            socket.on("disconnect", () => {
+                console.log("bye");
+            });
+
+            //確定歌曲刪除完畢
+            socket.on("deleteComplete", function () {
+                console.log("Delete Complete");
+            });
+
+            //測試連線
+            socket.emit("greet");
+        }
+
+        //youtube Iframe API執行速度在socket連線之後，故在此才去第一次請求歌單
+        function onYouTubeIframeAPIReady() {
+            YTINIT(nowPlay.ytcode);
+            appearAllSong();
+        }
+
+        function appearAllSong() {
+            var htmlText = "<select id='songs' name='songs' size='"+playList.length+"' multiple>";
+            if (nowPlay.hasOwnProperty("ytcode") && nowPlay.hasOwnProperty("name")) {
+                htmlText += "<option value='"+nowPlay.ytcode+"'>"+nowPlay.name+"</option>";
+                htmlText += "<option value='=================='>=======================</option>";
+            }
+            for (let i = 0; i < playList.length; i++) {
+                htmlText += "<option value='"+playList[i].ytcode+"'>"+playList[i].name+"</option>";
+            }
+            htmlText += "</select>"
+            document.getElementById("movieList").innerHTML = htmlText;
+        }
+
+        //向google 使用youtube服務
+        // function loadYoutubeService(query) {
+        //     gapi.client.load('youtube', 'v3', function() {
+        //         console.log(query);
+        //         gapi.client.setApiKey('AIzaSyDqKsCJIcprzf2owVt1f-M02G5S6vKhITI');
+        //         search(query);
+        //     });
+        // }
+        //搜尋
+        // function search(query) {
+        //     //對於搜尋上的其他功能可以參考googleapi
+        //     //https://developers.google.com/youtube/v3/docs/search/list#maxResults
+        //     var request = gapi.client.youtube.search.list({
+        //         part: 'snippet',
+        //         q: query,
+        //         maxResults: 24
+        //     });
+        //     console.log(request);
+
+        //     request.execute(function(response) {
+        //         //將結果把所需部分進行擷取
+        //         $.each(response.items, function(i, item) {
+        //             if (!item['id']['playlistId']) {
+        //                 var musicCard = {};
+        //                 musicCard._id = item['id']['videoId'];
+        //                 musicCard.title = item['snippet']['title'];
+        //                 musicCard.url = "https://www.youtube.com/embed/" + musicCard._id;
+        //                 musicCard.description = item['snippet']['description'];
+        //                 musicCards.push(musicCard);
+        //             }
+        //         });
+        //         // console.log(musicCards);
+        //         //將VIEW抽出來另外生成
+        //         renderView();
+        //     });
+        // }
+
+        // function renderView() {
+        //     var htmlString = "";
+        //     musicCards.forEach(function(musicCard, i) {
+        //         var card = createCard(musicCard._id, musicCard.title, musicCard.description, musicCard.url);
+
+        //         htmlString += card;
+        //     });
+        //     console.log(htmlString);
+        //     // $('#youtube-channel').html(htmlString);
+
+        // }
+
+        // function createCard(_id, title, description, url) {
+        //     var card =
+        //         '<div class="card">' +
+        //         '<div class="info">' +
+        //         '<img src="http://img.youtube.com/vi/' + _id + '/0.jpg" alt="' + description + '">' +
+        //         '</div>' +
+        //         '<div class="content">' +
+        //         '<a href="'+url+'"><h2>' + title + '</h2></a>' +
+        //         '<a href="'+url+'">https://www.youtube.com/embed/' + _id + '</a>' +
+        //         '<p>' + description + '</p>' +
+        //         '<iframe width="560" height="315" src="https://www.youtube.com/embed/' + _id + '?autoplay=1&mute=1" frameborder="0" allowfullscreen="allowfullscreen"></iframe>' + 
+        //         '</div>' +
+        //         '</div>';
+        //     return card;
+        // }
+
+    </script>
+    <body>
+        <div style="float: left">
+            <div id="moviename" style="height: 20px"></div>
+            <div id="muteYouTubeVideoPlayer"></div>
+        </div>
+        <div class="set-container">
+            <div id="movieList">
+            </div>
+        </div>
+        <div class="set-container">
+            <div class="search-button">
+                <button id="nextButton">
+                    下一首
+                </button>
+            </div>
+            <div class="search-button">
+                <button id="deleteButton">
+                    刪除
+                </button>
+            </div>
+            <div class="search-button">
+                <button id="playButton">
+                    播放選擇歌曲
+                </button>
+            </div>
+            <div class="search-button">
+                <input type="text" id="songname">
+            </div>
+            <div class="search-button">
+                <button id="changeButton">
+                    修改選擇歌名
+                </button>
+            </div>
+        </div>
+
+        <!-- <div id="youtube-channel" class="main-container"> </div> -->
+    </body>
+</html>
