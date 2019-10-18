@@ -1,0 +1,7 @@
+{
+  "requires": true,
+  "devDependencies": {
+    "socket.io": "^2.3.0",
+    "sqlite3": "^4.1.0"
+  }
+}
