@@ -190,6 +190,16 @@ function testDBgetMusic () {
     db.close();
 }
 
+//給client端測試連線是否正常
+function checkLink () {
+    var sendMessage = {
+        Action: 999
+    };
+    for (var i = 0; i < socketList.length; i++) {
+        io.to(socketList[i]).emit("getServerAction", JSON.stringify(sendMessage));
+    }
+}
+
 // dbGetMusicList();
 
 function serverIOCreate () {
@@ -265,6 +275,9 @@ var server = http.createServer(function (req, res) {
                         break;
                     case '5': case '6': case '7': case '8': case '9': case '10':
                         changeMusic(Number(params.action) - 5);
+                        break;
+                    case '999':
+                        checkLink();
                         break;
                     default:
                         console.log(params.action);

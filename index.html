@@ -247,6 +247,9 @@
                                 setMusicVolume(s.chVolume);
                             }
                             break;
+                        case 999:   //確認連線狀況
+                            checkLink();
+                            break;
                         default:
                             break;
                     }
@@ -284,6 +287,10 @@
             }
             htmlText += "</select>"
             document.getElementById("movieList").innerHTML = htmlText;
+        }
+
+        function checkLink() {
+            document.getElementById("soundCheck").innerHTML = "<embed height='100' width='100' autostart='true' loop='false' hidden='true' src='https://taira-komori.jpn.org/sound_os/instrument01/Japanese_drum1.mp3' />"
         }
 
         //向google 使用youtube服務
@@ -386,6 +393,7 @@
                 </button>
             </div>
         </div>
+        <div id="soundCheck"></div>
 
         <!-- <div id="youtube-channel" class="main-container"> </div> -->
     </body>
