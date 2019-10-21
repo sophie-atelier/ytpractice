@@ -48,7 +48,7 @@ function dbNewMusic (_name, _ytCode) {
 
         stmt.finalize(function () {
             var sendMessage =  {
-                MusicList: [{name: _name, ytcode: _ytCode}],
+                MusicList: [{name: _name, ytcode: _ytCode, count: 0}],
                 Action: 2
             };
             for (var i = 0; i < socketList.length; i++) {
@@ -62,7 +62,7 @@ function dbNewMusic (_name, _ytCode) {
 //播放此歌
 function musicPlay (_name, _ytCode) {
     var sendMessage = {
-        MusicList: [{name: _name, ytcode: _ytCode}],
+        MusicList: [{name: _name, ytcode: _ytCode, count: 0}],
         Action: 3
     };
     for (var i = 0; i < socketList.length; i++) {
@@ -73,7 +73,7 @@ function musicPlay (_name, _ytCode) {
 //新增至下一首
 function newMusicNext (_name, _ytCode) {
     var sendMessage =  {
-        MusicList: [{name: _name, ytcode: _ytCode}],
+        MusicList: [{name: _name, ytcode: _ytCode, count: 0}],
         Action: 4
     };
     for (var i = 0; i < socketList.length; i++) {
@@ -117,7 +117,8 @@ function dbGetMusicList (_socket) {
             songList.push({
                 id: row.id,
                 name: row.name,
-                ytcode: row.ytcode
+                ytcode: row.ytcode,
+                count: row.count
             });
             console.log(row.id + ": " + row.name + ": " + row.ytcode + ": " + row.count + ": " + new Date(row.lastplay));
         }, function (err, count) {

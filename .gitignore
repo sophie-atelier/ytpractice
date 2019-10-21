@@ -1,0 +1,3 @@
+node_modules/*
+musictable.db
+package-lock.json

@@ -212,9 +212,16 @@
                                 }
                             }
                             break;
-                        case 2: //取得新歌
+                        case 2: //新增歌曲
                             if (s.MusicList) {
-                                playList = playList.concat(s.MusicList);
+                                for (let i = 0; i < playList.length; i++) {
+                                    if (playList[i].count == 1) {
+                                        for (let j = 0; j < s.MusicList.length; j++) {
+                                            playList.splice(i, 0, s.MusicList[j]);
+                                        }
+                                        break;
+                                    }
+                                }
                                 appearAllSong();
                             }
                             break;
