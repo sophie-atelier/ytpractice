@@ -7,6 +7,7 @@ var file = "./musictable.db";
 var socketList = [];
 var htmlData;
 var socketIOjs;
+var soundObj;
 
 fs.readFile("index.html", null, function (error, data) {
     // console.log(data);
@@ -22,6 +23,14 @@ fs.readFile("socket.io.js", null, function (error, data) {
         throw error;
     } else {
         socketIOjs = data;
+    }
+});
+fs.readFile("sound/Japanese_drum1.mp3", null, function (error, data) {
+    // console.log(data);
+    if (error) {
+        throw error;
+    } else {
+        soundObj = data;
     }
 });
 
@@ -296,11 +305,15 @@ var server = http.createServer(function (req, res) {
 //開啟server
 var httpServer = http.createServer(function (req, res) {
     var params = url.parse(req.url, true).query;
-    res.writeHead(200, {"Content-Type": "text/html"});
     if (req.url == '/') {
+        res.writeHead(200, {"Content-Type": "text/html"});
         res.write(htmlData);
     } else if (req.url=='/socket.io.js') {
+        res.writeHead(200, {"Content-Type": "text/html"});
         res.write(socketIOjs);
+    } else if (req.url=='/sound.mp3') {
+        res.writeHead(200, {"Content-Type": "audio/mpeg"});
+        res.write(soundObj);
     }
     res.end();
 }).listen(8080, () => {
