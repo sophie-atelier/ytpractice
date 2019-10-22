@@ -287,17 +287,24 @@ var server = http.createServer(function (req, res) {
                 dbNewMusic(params.name, params.ytcode);
             }
         }
-    } else if (req.url=='/music') {
+    }
+    res.end();
+}).listen(6780, () => {
+    console.log("Node.js web server at port 6780 is running..");
+});
+
+//開啟server
+var httpServer = http.createServer(function (req, res) {
+    var params = url.parse(req.url, true).query;
+    res.writeHead(200, {"Content-Type": "text/html"});
+    if (req.url == '/') {
         res.write(htmlData);
     } else if (req.url=='/socket.io.js') {
         res.write(socketIOjs);
     }
     res.end();
+}).listen(8080, () => {
+    console.log("Node.js web server at port 8080 is running..");
 });
 
 serverIOCreate();
-
-//開啟server
-server.listen(6780, () => {
-    console.log("Node.js web server at port 6780 is running..");
-});
