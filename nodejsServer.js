@@ -120,17 +120,38 @@ function changeMusic (chType) {
 function dbGetMusicList (_socket) {
     var db = new sqlite3.Database(file);
     songList = [];
+    let y = new Date(Date.now() - 86400000);
+    let t = new Date(Date.now());
     db.each("SELECT rowid AS id, name, ytcode, count, lastplay FROM Music ORDER BY count ASC, lastplay ASC", 
         function (err, row) {
             //log出所有資料
+            let d = new Date(row.lastplay);
+
             songList.push({
                 id: row.id,
                 name: row.name,
                 ytcode: row.ytcode,
-                count: row.count
+                count: row.count,
+                today: (t.getFullYear() == d.getFullYear() && t.getMonth() == d.getMonth() && t.getDate() == d.getDate()),
+                yesterday: (y.getFullYear() == d.getFullYear() && y.getMonth() == d.getMonth() && y.getDate() == d.getDate())
             });
             console.log(row.id + ": " + row.name + ": " + row.ytcode + ": " + row.count + ": " + new Date(row.lastplay));
         }, function (err, count) {
+            let tList = [];
+            let yList = [];
+            let oList = [];
+            for (let i = 0; i < songList.length; i++) {
+                let item = songList[i];
+                if (item.today) {
+                    tList.push(item);
+                } else if (item.yesterday) {
+                    yList.push(item);
+                } else {
+                    oList.push(item);
+                }
+            }
+            songList = oList.concat(yList, tList);
+
             var sendMessage = {
                 MusicList: songList,
                 Action: 1
