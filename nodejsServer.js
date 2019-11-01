@@ -142,7 +142,9 @@ function dbGetMusicList (_socket) {
             let oList = [];
             for (let i = 0; i < songList.length; i++) {
                 let item = songList[i];
-                if (item.today) {
+                if (item.count == 0) {
+                    oList.push(item);
+                } else if (item.today) {
                     tList.push(item);
                 } else if (item.yesterday) {
                     yList.push(item);
