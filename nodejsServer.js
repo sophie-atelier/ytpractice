@@ -53,7 +53,7 @@ function dbNewMusic (_name, _ytCode) {
         // 插入歌曲
         var stmt = db.prepare("INSERT OR IGNORE INTO Music VALUES (?, ?, ?, ?)");
 
-        stmt.run(_name, _ytCode, 0, Date.now());
+        stmt.run(_name, _ytCode, 0, new Date("2000-01-01").getTime());
 
         stmt.finalize(function () {
             var sendMessage =  {
